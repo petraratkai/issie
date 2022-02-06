@@ -200,7 +200,7 @@ let lineParas: Line = {
 These types are good, maybe call them circleParams and lineParams, also XML comments inside the types shouldn't be there
 
 Section C
-=========
+---------
 
 ```F#
 /// is a rectangle side (determined by its two endpoints) clicked

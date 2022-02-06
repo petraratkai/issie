@@ -170,8 +170,9 @@ let dragThing (pos: XYPos) (model: Model3) =
 ```
 rename x1,x2 to wDiff, hDiff
 do subtraction could just be made into getUpdatedDims and return the new width and height
+
 Section B
-=========
+---------
 ```F#
 /// sample parameters for drawing circle
 let circParas = {

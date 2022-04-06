@@ -2,11 +2,11 @@
 
 (*
 This module provides some functions that ensure consistency of instantiated custom components when changes are
-made to ports in the underlying sheet. A dialiog is presented which allows instantiated components ports to
+made to ports in the underlying sheet. A dialog is presented which allows instantiated components ports to
 be updated correctly, with best efforts attempt to keep existing connections to each instance where ports remain
 the same or where it can safely be deduced how ports have been renamed.
 
-The code potentially makes chnages to every sheet in the project in the model, and writes out these chnages to disk.
+The code potentially makes changes to every sheet in the project in the model, and writes out these changes to disk.
 *)
 
 open Fulma
@@ -19,7 +19,7 @@ open CommonTypes
 open FilesIO
 open Extractor
 open PopupView
-open System
+
 
 
 let printSheetNames (model:Model) =
@@ -368,7 +368,7 @@ let changeInstance (comp:Component) (change: PortChange) =
             let labels = labels @ [name,width]
             let newPort:Port = 
                 {
-                    Id = DrawHelpers.uuid ()
+                    Id = JSHelpers.uuid ()
                     PortNumber = Some ports.Length // next available number
                     HostId = comp.Id
                     PortType = match dir with | InputIO -> PortType.Input | OutputIO -> PortType.Output
@@ -470,15 +470,16 @@ let updateInstance (newSig: Signature) (sheet:string,cid:string,oldSig:Signature
 
 
 
-            
+/// dispatch message to change project in model, returning project           
 let updateDependents (newSig: Signature) (instances:(string*string*Signature) list) model dispatch =
     match model.CurrentProj with
-    | None -> ()
+    | None -> None
     | Some p ->
         (p,instances)
         ||> List.fold (fun p instance -> updateInstance newSig instance p)
-        |> SetProject
-        |> dispatch
+        |> (fun p -> 
+            dispatch <| SetProject p
+            Some p)
 
 let checkCanvasStateIsOk (model:Model) =
     mapOverProject false model (fun p ->
@@ -552,7 +553,8 @@ let optCurrentSheetDependentsPopup (model: Model) =
                 let buttonAction isUpdate dispatch  _ =
                     if isUpdate then
                         updateDependents newSig instances model dispatch
-                        mapOverProject () model  (fun p -> saveAllProjectFilesFromLoadedComponentsToDisk p)
+                        |> Option.map saveAllProjectFilesFromLoadedComponentsToDisk
+                        |> ignore
                     dispatch <| ClosePopup
                 choicePopupFunc 
                     "Update All Sheet Instances" 

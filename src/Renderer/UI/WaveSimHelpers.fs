@@ -10,8 +10,9 @@ open DiagramStyle
 open CommonTypes
 open FileMenuView
 open Extractor
-open Simulator
 open SimulatorTypes
+open Sheet.SheetInterface
+open DrawModelType
 
 let maxLastClk = 500u
 
@@ -413,7 +414,7 @@ let private appendSimData (model: Model) (wSModel: WaveSimModel) nCycles =
         |> Some
 
 /// get Connection list (1 or 0) from ConnectionId (as a string)
-let private connId2Conn (sheet: Sheet.Model) (connId: ConnectionId) : Connection list =
+let private connId2Conn (sheet: SheetT.Model) (connId: ConnectionId) : Connection list =
     match sheet.GetCanvasState() with
     | (_, conns) -> 
         List.tryFind (fun (conn: Connection) -> ConnectionId conn.Id = connId) conns
@@ -620,11 +621,11 @@ let rec private findName (compIds: ComponentId Set) (sd: SimulationData) (net: N
             | ROM _ | RAM _ | AsyncROM _ -> 
                     failwithf "What? Legacy RAM component types should never occur"
 
-            | Not | And | Or | Xor | Nand | Nor | Xnor | Decode4 | Mux2 | BusCompare _ -> 
+            | Not | And | Or | Xor | Nand | Nor | Xnor | Decode4 | Mux2 | Mux4 | Mux8 | BusCompare _ -> 
                 [ { LabName = compLbl; BitLimits = 0, 0 } ] 
             | Input w | Output w | Constant1(w, _,_) | Constant(w,_) | Viewer w -> 
                 [ { LabName = compLbl; BitLimits = w - 1, 0 } ] 
-            | Demux2 -> 
+            | Demux2 | Demux4 | Demux8 -> 
                 [ { LabName = compLbl + "." + string outPortInt; BitLimits = 0, 0 } ]
             | NbitsXor w -> 
                 [ { LabName = compLbl; BitLimits = w - 1, 0 } ]
@@ -1131,11 +1132,11 @@ let highlightConnectionsFromWaves (model: Model) (dispatch: Msg -> Unit) =
         let selectedIds =  Array.collect selectedConnectionIds waves
         let wrongColorIds =
             selectedIds
-            |> Array.map (fun cid -> Map.tryFind cid model.Sheet.Wire.WX)
+            |> Array.map (fun cid -> Map.tryFind cid model.Sheet.Wire.Wires)
             |> Array.filter ((<>) None)
             |> Array.map Option.get
             |> Array.filter (fun wire -> wire.Color <> HighLightColor.Blue)
-            |> Array.map (fun wire -> wire.Id)
+            |> Array.map (fun wire -> wire.WId)
         // break loop while ensuring that connections are colored if needed
         // nasty fix
         if wrongColorIds <> [||] then

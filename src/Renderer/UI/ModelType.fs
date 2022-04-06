@@ -2,9 +2,8 @@
     ModelType.fs
 
     This module provides the type for the FRP UI.
-    It is not possible to put this type among the CommonTypes as it has to
-    depend on Draw2dWrapper. Furthermore, non-UI modules should be agnostic of
-    the FRP model.
+    It could be put next to CommonTypes but non-UI modules should be agnostic of
+    the FRP model and run independently of Fable
 *)
 
 module rec ModelType
@@ -12,6 +11,7 @@ module rec ModelType
 open CommonTypes
 open SimulatorTypes
 open Fable.React
+open Sheet.SheetInterface
 
 type RightTab =
     | Properties
@@ -262,7 +262,7 @@ type PopupProgress =
 
 type Msg =
     | ShowExitDialog
-    | Sheet of Sheet.Msg
+    | Sheet of DrawModelType.SheetT.Msg
     | JSDiagramMsg of JSDiagramMsg
     | KeyboardShortcutMsg of KeyboardShortcutMsg
     | StartSimulation of Result<SimulationData, SimulationError>
@@ -362,7 +362,7 @@ type Model = {
     WaveSimSheet: string
         
     // Draw Canvas
-    Sheet: Sheet.Model
+    Sheet: DrawModelType.SheetT.Model
 
     // true during period when a sheet or project is loading
     IsLoading: bool
@@ -585,6 +585,11 @@ let spMess msg =
     //| SetProject p -> sprintf "MSG<<SetProject:%s>>ENDM" (spProj p)
     //| SetLastSimulatedCanvasState canvasOpt-> sprintf "MSG<SetLastSimCanv:%s>>ENDM" (spOpt spState canvasOpt)
     | x -> sprintf "MSG<<%20A>>ENDM" x
+
+let tryGetLoadedComponents model =
+    match model.CurrentProj with
+    | Some p -> p.LoadedComponents
+    | _ -> []
 
 let updateLdComps (name:string) (changeFun: LoadedComponent -> LoadedComponent)  (ldComps: LoadedComponent list)=
     ldComps

@@ -1,23 +1,15 @@
 ﻿module DiagramMainView
-
-open Elmish
-
 open Fulma
-open Fulma.Extensions.Wikiki
 
 open Fable.React
 open Fable.React.Props
 
 open DiagramStyle
 open ModelType
-open CommonTypes
-open Extractor
-open CatalogueView
-open System
-open Notifications
 open FileMenuView
 open WaveformSimulationView
-open Helpers
+open Sheet.SheetInterface
+open DrawModelType
 
 open Fable.Core
 open Fable.Core.JsInterop
@@ -27,7 +19,7 @@ open Fable.Core.JsInterop
 
 let viewOnDiagramButtons model dispatch =
     let sheetDispatch sMsg = dispatch (Sheet sMsg)
-    let dispatch = Sheet.KeyPress >> sheetDispatch
+    let dispatch = SheetT.KeyPress >> sheetDispatch
 
     div [ canvasSmallMenuStyle ] [
         let canvasBut func label = 
@@ -40,10 +32,10 @@ let viewOnDiagramButtons model dispatch =
                     ]
                 ] 
                 [ str label ]
-        canvasBut (fun _ -> dispatch Sheet.KeyboardMsg.CtrlZ ) "< undo" 
-        canvasBut (fun _ -> dispatch Sheet.KeyboardMsg.CtrlY ) "redo >" 
-        canvasBut (fun _ -> dispatch Sheet.KeyboardMsg.CtrlC ) "copy" 
-        canvasBut (fun _ -> dispatch Sheet.KeyboardMsg.CtrlV ) "paste" 
+        canvasBut (fun _ -> dispatch SheetT.KeyboardMsg.CtrlZ ) "< undo" 
+        canvasBut (fun _ -> dispatch SheetT.KeyboardMsg.CtrlY ) "redo >" 
+        canvasBut (fun _ -> dispatch SheetT.KeyboardMsg.CtrlC ) "copy" 
+        canvasBut (fun _ -> dispatch SheetT.KeyboardMsg.CtrlV ) "paste" 
 
     ]
 
@@ -55,7 +47,7 @@ let viewOnDiagramButtons model dispatch =
 let init() = {
     LastChangeCheckTime = 0.
     // Diagram = new Draw2dWrapper()
-    Sheet = fst (Sheet.init())
+    Sheet = fst (SheetUpdate.init())
     WaveSimulationIsOutOfDate = true
     IsLoading = false
     LastDetailedSavedState = ([],[])
@@ -224,7 +216,7 @@ let displayView model dispatch =
 
     // the whole app window
     let cursorText = model.Sheet.CursorType.Text()
-    let topCursorText = match model.Sheet.CursorType with | Sheet.Spinner -> "wait" | _ -> ""
+    let topCursorText = match model.Sheet.CursorType with | SheetT.Spinner -> "wait" | _ -> ""
 
     div [ HTMLAttr.Id "WholeApp"
           Key cursorText

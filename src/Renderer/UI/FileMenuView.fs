@@ -1,8 +1,8 @@
-//(*
-//    FileMenuView.fs
-//
-//    View for the top menu, and related functionalities.
-//*)
+(*
+    FileMenuView.fs
+
+    View for the top menu, and related functionalities: renamimg, loadimg, saving, deleting sheets
+*)
 
 module FileMenuView
 
@@ -20,6 +20,9 @@ open Extractor
 open Notifications
 open PopupView
 open CustomCompPorts
+open DrawModelType
+open Sheet.SheetInterface
+
 open System
 //--------------------------------------------------------------------------------------------//
 //--------------------------------------------------------------------------------------------//
@@ -32,7 +35,7 @@ open System
 let quantifyChanges (ldc1:LoadedComponent) (ldc2:LoadedComponent) =
     let comps1,conns1 = ldc1.CanvasState
     let comps2,conns2 = ldc2.CanvasState
-    let reduceComp comp1 =
+    let reduceComp comp1:Component =
         {comp1 with X=0;Y=0}
     let reduceConn conn1 =
         {conn1 with Vertices = []}
@@ -129,10 +132,10 @@ let private displayFileErrorNotification err dispatch =
     dispatch <| SetFilesNotification note
 
 /// Send messages to change Diagram Canvas and specified sheet waveSim in model
-let private loadStateIntoModel (compToSetup:LoadedComponent) waveSim ldComps model dispatch =
+let private loadStateIntoModel (compToSetup:LoadedComponent) waveSim ldComps (model:Model) dispatch =
     // it seems still need this, however code has been deleted!
     //Sheet.checkForTopMenu () // A bit hacky, but need to call this once after everything has loaded to compensate mouse coordinates.
-    
+    let ldcs = tryGetLoadedComponents model
     let name = compToSetup.Name
     let components, connections = compToSetup.CanvasState
     //printfn "Loading..."
@@ -141,25 +144,26 @@ let private loadStateIntoModel (compToSetup:LoadedComponent) waveSim ldComps mod
             SetHighlighted([], []) // Remove current highlights.
     
             // Clear the canvas.
-            Sheet Sheet.ResetModel
-            Sheet (Sheet.Wire BusWire.ResetModel)
-            Sheet (Sheet.Wire (BusWire.Symbol (Symbol.ResetModel ) ) )
+            Sheet SheetT.ResetModel
+            Sheet (SheetT.Wire BusWireT.ResetModel)
+            Sheet (SheetT.Wire (BusWireT.Symbol (SymbolT.ResetModel ) ) )
     
             // Finally load the new state in the canvas.
             SetIsLoading true
             //printfn "Check 1..."
     
             //Load components
-            Sheet (Sheet.Wire (BusWire.Symbol (Symbol.LoadComponents components )))
-            Sheet Sheet.UpdateBoundingBoxes
+            Sheet (SheetT.Wire (BusWireT.Symbol (SymbolT.LoadComponents (ldcs,components ))))
+            Sheet SheetT.UpdateBoundingBoxes
+            Sheet SheetT.UpdateLabelBoundingBoxes
     
-            Sheet (Sheet.Wire (BusWire.LoadConnections connections))
+            Sheet (SheetT.Wire (BusWireT.LoadConnections connections))
 
-            Sheet Sheet.FlushCommandStack // Discard all undo/redo.
+            Sheet SheetT.FlushCommandStack // Discard all undo/redo.
             // Run the a connection widths inference.
             //printfn "Check 4..."
     
-            Sheet (Sheet.Wire (BusWire.BusWidths))
+            Sheet (SheetT.Wire (BusWireT.BusWidths))
             // JSdispatch <| InferWidths()
             //printfn "Check 5..."
             // Set no unsaved changes.
@@ -184,7 +188,7 @@ let private loadStateIntoModel (compToSetup:LoadedComponent) waveSim ldComps mod
     //INFO - Currently the spinner will ALWAYS load after 'SetTopMenu x', probably it is the last command in a chain
     //Ideally it should happen before this, but it is not currently doing this despite the async call
     //This will set a spinner for both Open project and Change sheet which are the two most lengthly processes
-    dispatch <| (Sheet (Sheet.SetSpinner true))
+    dispatch <| (Sheet (SheetT.SetSpinner true))
     dispatch <| SendSeqMsgAsynch msgs
     
 /// Return LoadedComponents with sheet name updated according to setFun.
@@ -273,7 +277,7 @@ let saveOpenFileAction isAuto model (dispatch: Msg -> Unit)=
                             match List.tryFind (fun (c:Component) -> c.Id=comp.Id) ramCheck with
                             | Some newRam -> 
                                 // TODO: create consistent helpers for messages
-                                dispatch <| Sheet (Sheet.Wire (BusWire.Symbol (Symbol.WriteMemoryType (ComponentId comp.Id, newRam.Type))))
+                                dispatch <| Sheet (SheetT.Wire (BusWireT.Symbol (SymbolT.WriteMemoryType (ComponentId comp.Id, newRam.Type))))
                                 newRam
                             | _ -> comp), conns)
             writeComponentToBackupFile 4 1. newLdc dispatch
@@ -722,7 +726,7 @@ let rec resolveComponentOpenPopup
 let private openProject model dispatch =
     //trying to force the spinner to load earlier
     //doesn't really work right now
-    dispatch (Sheet (Sheet.SetSpinner true))
+    dispatch (Sheet (SheetT.SetSpinner true))
     match askForExistingProjectPath () with
     | None -> () // User gave no path.
     | Some path ->
@@ -1004,7 +1008,7 @@ let viewTopMenu model messagesFunc simulateButtonFunc dispatch =
                                       Button.OnClick(fun _ -> 
                                         dispatch (StartUICmd SaveSheet)
                                         saveOpenFileActionWithModelUpdate model dispatch |> ignore
-                                        dispatch <| Sheet(Sheet.DoNothing) //To update the savedsheetisoutofdate send a sheet message
+                                        dispatch <| Sheet(SheetT.DoNothing) //To update the savedsheetisoutofdate send a sheet message
                                         ) ]) [ str "Save" ] ] ]
                       Navbar.End.div []
                           [ 

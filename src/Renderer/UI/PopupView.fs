@@ -48,8 +48,9 @@ open JSHelpers
 open Helpers
 open ModelType
 open CommonTypes
-open DiagramStyle
 open EEExtensions
+open Sheet.SheetInterface
+
 
 
 //=======//

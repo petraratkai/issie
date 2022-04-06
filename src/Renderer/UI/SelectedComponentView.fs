@@ -11,12 +11,13 @@ open Fable.React
 open Fable.React.Props
 
 open JSHelpers
-open Helpers
 open ModelType
 open CommonTypes
 open MemoryEditorView
 open PopupView
 open Notifications
+open Sheet.SheetInterface
+open DrawModelType
 
 let private readOnlyFormField name body =
     Field.div [] [
@@ -179,14 +180,14 @@ let private makeNumberOfBitsField model (comp:Component) text dispatch =
 
 let mockDispatchS msgFun msg =
     match msg with
-    | Sheet (Sheet.Msg.Wire (BusWire.Msg.Symbol sMsg)) ->
+    | Sheet (SheetT.Msg.Wire (BusWireT.Msg.Symbol sMsg)) ->
         msgFun msg
     | _ -> ()
 
 
 
 let msgToS = 
-    BusWire.Msg.Symbol >> Sheet.Msg.Wire >> Msg.Sheet
+    BusWireT.Msg.Symbol >> SheetT.Msg.Wire >> Msg.Sheet
   
 /// Return dialog fileds used by constant, or default values
 let constantDialogWithDefault (w,cText) dialog =
@@ -207,7 +208,7 @@ let makeConstantDialog (model:Model) (comp: Component) (text:string) (dispatch: 
         | Some (Constant1(w,cVal,cText) as compT) ->
             if compT <> comp.Type then
                 model.Sheet.ChangeWidth (Sheet >> dispatch) (ComponentId comp.Id) w
-                symbolDispatch <| Symbol.ChangeConstant (ComponentId comp.Id, cVal, cText)
+                symbolDispatch <| SymbolT.ChangeConstant (ComponentId comp.Id, cVal, cText)
                 dispatch (ReloadSelectedComponent w)
                 dispatch ClosePropertiesNotification
         | _ -> failwithf "What? impossible"
@@ -293,7 +294,11 @@ let private makeDescription (comp:Component) model dispatch =
     | Not | And | Or | Xor | Nand | Nor | Xnor ->
         div [] [ str <| sprintf "%A gate." comp.Type ]
     | Mux2 -> div [] [ str "Multiplexer with two inputs and one output." ]
+    | Mux4 -> div [] [ str "Multiplexer with four inputs and one output." ]
+    | Mux8 -> div [] [ str "Multiplexer with eight inputs and one output." ]
     | Demux2 -> div [] [ str "Demultiplexer with one input and two outputs." ]
+    | Demux4 -> div [] [ str "Demultiplexer with one input and four outputs." ]
+    | Demux8 -> div [] [ str "Demultiplexer with one input and eight outputs." ]
     | MergeWires -> div [] [ str "Merge two wires of width n and m into a single wire of width n+m." ]
     | SplitWire _ -> div [] [ str "Split a wire of width n+m into two wires of width n and m."]
     | NbitsAdder numberOfBits -> div [] [ str <| sprintf "%d bit(s) adder." numberOfBits ]
@@ -393,7 +398,7 @@ let viewSelectedComponent (model: ModelType.Model) dispatch =
         |> (fun chars -> match Seq.length chars with | 0 -> None | _ -> Some (String.concat "" (Seq.map string chars)))
     match model.Sheet.SelectedComponents with
     | [ compId ] ->
-        let comp = Symbol.extractComponent model.Sheet.Wire.Symbol compId
+        let comp = SymbolUpdate.extractComponent model.Sheet.Wire.Symbol compId
         div [Key comp.Id] [
             // let label' = extractLabelBase comp.Label
             // TODO: normalise labels so they only contain allowed chars all uppercase

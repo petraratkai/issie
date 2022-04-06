@@ -80,13 +80,15 @@ open CommonTypes
 open WaveSimHelpers
 open FileMenuView
 open SimulatorTypes
-
+open Sheet.SheetInterface
+open DrawModelType
 
 
 /// maximum width of the waveform simulator viewer
 let maxUsedViewerWidth (wSMod: WaveSimModel) =
+    let waveSimFont = {DrawHelpers.defaultText with FontSize="12px";FontWeight="";FontFamily="segoe ui"}
     let strWidth s = 
-        DrawHelpers.getTextWidthInPixels (s, "12px segoe ui") //not sure which font
+        DrawHelpers.getTextWidthInPixels (s, waveSimFont) //not sure which font
     let curLblColWidth =
         match cursorValueStrings wSMod with
         | [||] -> 0.0
@@ -249,7 +251,7 @@ let showSimulationLoading (wsModel: WaveSimModel) (dispatch: Msg ->Unit) =
     | None, _ -> false
     | Some _, _ -> 
         dispatch <| WaveSimulateNow
-        dispatch <| Sheet Sheet.ResetSelection
+        dispatch <| Sheet SheetT.ResetSelection
         dispatch <| UpdateWSModel (fun wsm -> {wsm with AllWaves = resetV wsm.AllWaves})
         true
 
@@ -575,7 +577,7 @@ let private waveEditorTickBoxRows model wsModel (dispatch: Msg -> unit) =
 /// Contains tick-boxes for NetGroups
 let private waveEditorTickBoxesAndNames (model: Model) wSModel (dispatch: Msg -> unit) =
     div [ Style [ Position PositionOptions.Absolute
-                  Top "300px" ] ]
+                  CSSProp.Top "300px" ] ]
         [ table []
                 [ tbody [] 
                         (Array.append [| waveEditorSelectAllRow model wSModel dispatch |] 
@@ -592,8 +594,8 @@ let private waveEditorButtons (model: Model) (wSModel:WaveSimModel) dispatch =
         dispatch <| SetWSMod {wSModel with InitWaveSimGraph=None; WSViewState=WSClosed; WSTransition = None}
         dispatch <| ChangeRightTab Catalogue
         dispatch <| SetWaveSimIsOutOfDate true
-        dispatch <| Sheet (Sheet.ResetSelection)
-        dispatch <| Sheet (Sheet.SetWaveSimMode false)
+        dispatch <| Sheet (SheetT.ResetSelection)
+        dispatch <| Sheet (SheetT.SetWaveSimMode false)
         dispatch ClosePropertiesNotification
         dispatch FinishUICmd
     
@@ -637,7 +639,7 @@ let private waveEditorButtons (model: Model) (wSModel:WaveSimModel) dispatch =
                          ClosePropertiesNotification
                          (InitiateWaveSimulation( WSViewerOpen, par'))
                         ]
-                    dispatch (Sheet (Sheet.SetSpinner true))
+                    dispatch (Sheet (SheetT.SetSpinner true))
                     dispatch <| SendSeqMsgAsynch msgs)
             ]
         |> (fun lst -> 
@@ -872,7 +874,7 @@ let viewWaveSim (model: Model) dispatch =
               [ SimulationView.viewSimulationError simError
                 button [ Button.Color IsDanger ] (fun _ -> 
                     dispatch CloseSimulationNotification // Close error notifications.
-                    dispatch <| Sheet(Sheet.ResetSelection) // Remove highlights.
+                    dispatch <| Sheet(SheetT.ResetSelection) // Remove highlights.
                     dispatch <| (JSDiagramMsg << InferWidths) () // Repaint connections.
                     dispatch <| SetWSError None
                     match getCurrentWSMod model with
